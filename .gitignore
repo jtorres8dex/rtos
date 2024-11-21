@@ -2,3 +2,5 @@ qgroundcontrol/
 qt5/
 
 .DS_store
+
+*/.DS_store
