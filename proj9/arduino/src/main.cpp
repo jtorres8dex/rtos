@@ -8,9 +8,13 @@ MPU6050 mpu;
 
 
 // set init and sim vals 
-float roll{0.0};
-float pitch{0.0};
-float yaw{0.0};
+int16_t ax{0};
+int16_t ay{0};
+int16_t az{0};
+int16_t gx{0};
+int16_t gy{0};
+int16_t gz{0};
+
 // arbitrarily assuming 100 Hz
 float timeStep = 0.01;
 unsigned long previousTime{0};
@@ -58,7 +62,6 @@ void setup() {
     xTaskCreate(TaskReadIMU, "IMU Read", 128, NULL, 2, NULL);
     xTaskCreate(TaskSendData, "Data Send", 128, NULL, 1, NULL);
 
-    Serial.println("Done setup function");
 }
 
 void loop() {} // empty since we are using freeRTOS framework 
@@ -68,37 +71,10 @@ void TaskReadIMU(void *pvParameters) {
     (void) pvParameters;
 
     while (1) {
-        int16_t ax, ay, az;
-        int16_t gx, gy, gz;
 
         mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
         // Convert gyroscope values from raw to degrees/second
-        float gyroXrate = gx / 131.0; // Assuming sensitivity is ±250 degrees/sec
-        float gyroYrate = gy / 131.0;
-        float gyroZrate = gz / 131.0;
-
-        unsigned long currentTime = millis();
-        float dt = (currentTime - previousTime) / 1000.0;
-        previousTime = currentTime;
-
-        // Calculate Roll and Pitch using accelerometer
-        float accRoll = atan2(ay, az) * 180 / PI;
-        float accPitch = atan2(-ax, sqrt(ay * ay + az * az)) * 180 / PI;
-
-        // Integrate gyroscope data for Roll, Pitch, and Yaw
-        roll += gyroXrate * dt;
-        pitch += gyroYrate * dt;
-        yaw += gyroZrate * dt;
-
-
-        // Complementary filter to combine accelerometer and gyroscope data
-        const float alpha = 0.98;
-        roll = alpha * roll + (1 - alpha) * accRoll;
-        pitch = alpha * pitch + (1 - alpha) * accPitch + 1;
-        // Store the calculated Roll, Pitch, Yaw values in shared variables
-        // handle nan case
-        if (isnan(pitch)){pitch=0.0;}
         xSemaphoreGive(imuDataMutex);
 
         // Delay to allow other tasks to run
@@ -113,9 +89,12 @@ void TaskSendData(void *pvParameters) {
     while (1) {
         // Take the mutex to safely write Roll, Pitch, and Yaw data
         xSemaphoreTake(imuDataMutex, portMAX_DELAY);
-        Serial.print(roll); Serial.print(',');
-        Serial.print(pitch); Serial.print(',');
-        Serial.println(yaw);
+        Serial.print(ax); Serial.print(',');
+        Serial.print(ay); Serial.print(',');
+        Serial.print(az); Serial.print(',');
+        Serial.print(gx); Serial.print(',');
+        Serial.print(gy); Serial.print(',');
+        Serial.println(gz); 
         xSemaphoreGive(imuDataMutex);
 
         // Delay for a short interval before sending data again

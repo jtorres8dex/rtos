@@ -47,6 +47,7 @@ def update_plot(frame):
 
 # Function to handle incoming data
 def receive_data():
+    print("safdfs")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind((HOST, PORT))
         server_socket.listen()
@@ -88,11 +89,8 @@ def receive_data():
                     continue
 
 # Run receive_data in the background so the plot can update continuously
-import threading
-data_thread = threading.Thread(target=receive_data, daemon=True)
-data_thread.start()
-
+receive_data()
 # Start real-time plotting with matplotlib's FuncAnimation
-ani = FuncAnimation(fig, update_plot, interval=100)
+ani = FuncAnimation(fig, update_plot, interval=100, save_count=1000)
 plt.tight_layout()
 plt.show()
